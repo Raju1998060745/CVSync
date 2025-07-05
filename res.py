@@ -7,8 +7,13 @@ from fastapi import FastAPI, Request
 from pydantic import BaseModel
 from fastapi.responses import JSONResponse
 import uvicorn
+from langsmith import traceable
 from fastapi.middleware.cors import CORSMiddleware 
 import re
+
+from dotenv import load_dotenv
+load_dotenv()
+
 
 TARGET_SCORE   = 90          # stop when ATS score ≥ this value
 MAX_ROUNDS     = 3 
@@ -47,6 +52,9 @@ class SaveSelectedResumeRequest(BaseModel):
     atsscore: int | None = None
     optimizedscore: int | None = None
 
+
+
+@traceable(run_type="llm", name="generate_resume")
 def generate(job_description, current_resume):
     client = genai.Client(
         vertexai=True,
@@ -176,6 +184,7 @@ def get_all_results():
         })
     return {"results": results}
 
+@traceable(run_type="llm", name="rewrite_resume")
 def rewrite_resume(job_desc: str,
                    resume: str,
                    feedback: str | None = None) -> str:
@@ -279,7 +288,7 @@ Professional Summary (3-4 lines)
     return result
 
 
-
+@traceable(run_type="llm", name="evaluate_resume")
 def evaluate_resume(job_desc: str, resume: str) -> tuple[int, str]:
     client = genai.Client(
         vertexai=True,
