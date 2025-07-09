@@ -5,13 +5,17 @@ import sqlite3
 from datetime import datetime
 from fastapi import FastAPI, Request
 from pydantic import BaseModel
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
 import uvicorn
 from langsmith import traceable
 from fastapi.middleware.cors import CORSMiddleware 
 import re
+from typing import List, Optional, Dict
+import json
 
 from dotenv import load_dotenv
+from pdf_utils import generate_pdf_from_content
+
 load_dotenv()
 
 
@@ -32,6 +36,45 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+class Contact(BaseModel):
+    phone: str
+    email: str
+    linkedin: str
+
+
+class Profile(BaseModel):
+    summary: str
+    skills: Dict[str, List[str]]
+    core_competencies: List[str]
+
+
+class ExperienceEntry(BaseModel):
+    company: str
+    title: str
+    location: Optional[str]
+    start_date: str
+    end_date: Optional[str]
+    summary: Optional[str]
+    responsibilities: List[str]
+
+
+class Project(BaseModel):
+    name: str
+    technologies: str
+    date: str
+    description: List[str]
+
+
+class Resume(BaseModel):
+    name: str
+    # contact: Contact
+    profile: Profile
+    experience: List[ExperienceEntry]
+    projects: List[Project]
+
+    # education: List[EducationEntry]
+    # certifications: Optional[List[Certification]]
+
 class ResumeRequest(BaseModel):
     job_description: str
     current_resume: str
@@ -51,7 +94,16 @@ class SaveSelectedResumeRequest(BaseModel):
     status: str  # 0 for original, 1 for optimized
     atsscore: int | None = None
     optimizedscore: int | None = None
+    optimizedResume: str | None = None
+    generatedResume: str | None = None
 
+
+class UserProfile(BaseModel):
+    name: str
+    phone: str
+    email: str
+    github: str
+    resumes: list[str]
 
 
 @traceable(run_type="llm", name="generate_resume")
@@ -70,7 +122,9 @@ Inputs:
 • Job Description (JD) - {job_description}
 • Current Resume - {current_resume}
 
-Task: Rewrite only the Work Experience and Skills sections of the resume so they strongly reflect the requirements in the JD.
+Task: Rewrite only the Work Experience and Skills sections of the resume so they strongly reflect the requirements in the JD. 
+
+Note: Give In JSON format.
 
 Detailed Instructions
 
@@ -82,11 +136,10 @@ Work Experience (2 most recent roles)
 • Generate exactly 10 powerful bullet points per role.
 • Each bullet must start with a strong action verb and include a quantifiable metric (%, $, #, time saved, throughput, etc.).
 • Weave in the JD keywords naturally—do not fabricate achievements that are not supported by the resume.
-• Keep bullets concise (≤ 25 words each) and results oriented.
+• Keep bullets concise and results-oriented.
 
 Skills Section
 • Create a categorized list (e.g., Programming Languages, Frameworks, Cloud & DevOps, Methodologies).
-• Prioritize JD keywords first; omit skills that are irrelevant to the JD.
 • Ensure every listed skill is demonstrably used or referenced in the Work Experience bullets.
 
 Consistency Checks
@@ -136,6 +189,10 @@ Professional Summary (3-4 lines)
         thinking_config=types.ThinkingConfig(
             thinking_budget=-1,
         ),
+        response_schema = Resume.model_json_schema(),
+        response_mime_type = "application/json",
+
+
     )
 
     result = ""
@@ -218,11 +275,10 @@ Work Experience (2 most recent roles)
 • Generate exactly 10 powerful bullet points per role.
 • Each bullet must start with a strong action verb and include a quantifiable metric (%, $, #, time saved, throughput, etc.).
 • Weave in the JD keywords naturally—do not fabricate achievements that are not supported by the resume.
-• Keep bullets concise (≤ 25 words each) and results oriented.
+• Keep bullets concise  and results oriented.
 
 Skills Section
 • Create a categorized list (e.g., Programming Languages, Frameworks, Cloud & DevOps, Methodologies).
-• Prioritize JD keywords first; omit skills that are irrelevant to the JD.
 • Ensure every listed skill is demonstrably used or referenced in the Work Experience bullets.
 
 Consistency Checks
@@ -241,7 +297,7 @@ Professional Summary (3-4 lines)
 """)
 
     system_instruction="""
-        You are an elite resume-optimization assistant. Emphasize impact, metrics,and exact JD keywords so modern ATS parsers score the résumé highly.
+        "You are an elite resume-optimization assistant. Your goal is to transform a candidate's resume so that it aligns crisply with a specific job description, while remaining 100 % truthful to the source material. You must emphasize impact, metrics, and the exact keywords that modern Applicant Tracking Systems (ATS) look for.
 """
 
     model = "gemini-2.5-flash"
@@ -388,15 +444,17 @@ def save_selected_resume(data: SaveSelectedResumeRequest):
     if data.status == "optimized":
         status = 1
         score = data.optimizedscore
+        content = data.optimizedResume
     else:
         status = 0
         score = data.atsscore
+        content = data.generatedResume
     conn = sqlite3.connect("results.db")
     c = conn.cursor()
-    c.execute("UPDATE results SET status = ?, atsScore = ? WHERE id = ?", (status, score, integer_number))
+    c.execute("UPDATE results SET status = ?, atsScore = ?, content = ? WHERE id = ?", (status, score, content, integer_number))
     conn.commit()
     conn.close()
-    return {"message": "Status and score updated successfully", "id": data.id, "status": data.status, "score": score}
+    return {"message": "Status, score, and content updated successfully", "id": data.id, "status": data.status, "score": score, "content": content}
 
 @app.get("/resume/{resume_id}")
 def get_resume_by_id(resume_id: str):
@@ -418,5 +476,101 @@ def get_resume_by_id(resume_id: str):
         }
     else:
         return {"error": "Resume not found"}
+
+@app.get("/pdf/{resume_id}")
+def generate_pdf_api(resume_id: str):
+    res = int(resume_id)
+    conn = sqlite3.connect("results.db")
+    c = conn.cursor()
+    c.execute("SELECT content FROM results WHERE id = ?", (res,))
+    row = c.fetchone()
+    if not row:
+        conn.close()
+        return JSONResponse(content={"error": "Resume not found"}, status_code=404)
+    content = row[0]
+    # Fetch user profile info
+    c.execute("SELECT name, phone, email, github FROM user_profile WHERE id = 1")
+    profile_row = c.fetchone()
+    conn.close()
+    extra = {}
+    if profile_row:
+        extra = {
+            "name": profile_row[0] or "",
+            "contact": {
+                "phone": profile_row[1] or "",
+                "email": profile_row[2] or "",
+                "github": profile_row[3] or ""
+            }
+        }
+    # Merge extra info into resume content
+    try:
+        resume_data = json.loads(content)
+    except Exception:
+        resume_data = {}
+    resume_data.update(extra)
+    pdf_path = f"resume_{resume_id}.pdf"
+    generate_pdf_from_content(resume_data, pdf_path)
+    return FileResponse(pdf_path, media_type="application/pdf", filename=pdf_path)
+
+@app.get("/profile")
+def get_profile():
+    conn = sqlite3.connect("results.db")
+    c = conn.cursor()
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS user_profile (
+            id INTEGER PRIMARY KEY,
+            name TEXT,
+            phone TEXT,
+            email TEXT,
+            github TEXT,
+            resumes TEXT
+        )
+    """)
+    c.execute("SELECT name, phone, email, github, resumes FROM user_profile WHERE id = 1")
+    row = c.fetchone()
+    conn.close()
+    if row:
+        return {
+            "name": row[0],
+            "phone": row[1],
+            "email": row[2],
+            "github": row[3],
+            "resumes": json.loads(row[4]) if row[4] else []
+        }
+    else:
+        return {
+            "name": "",
+            "phone": "",
+            "email": "",
+            "github": "",
+            "resumes": []
+        }
+
+@app.post("/profile")
+def save_profile(profile: UserProfile):
+    conn = sqlite3.connect("results.db")
+    c = conn.cursor()
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS user_profile (
+            id INTEGER PRIMARY KEY,
+            name TEXT,
+            phone TEXT,
+            email TEXT,
+            github TEXT,
+            resumes TEXT
+        )
+    """)
+    c.execute("SELECT id FROM user_profile WHERE id = 1")
+    exists = c.fetchone()
+    if exists:
+        c.execute("UPDATE user_profile SET name=?, phone=?, email=?, github=?, resumes=? WHERE id=1",
+                  (profile.name, profile.phone, profile.email, profile.github, json.dumps(profile.resumes)))
+    else:
+        c.execute("INSERT INTO user_profile (id, name, phone, email, github, resumes) VALUES (1,?,?,?,?,?)",
+                  (profile.name, profile.phone, profile.email, profile.github, json.dumps(profile.resumes)))
+    conn.commit()
+    conn.close()
+    return {"message": "Profile saved"}
+
 if __name__ == "__main__":
     uvicorn.run("res:app", host="0.0.0.0", port=8000, reload=True)

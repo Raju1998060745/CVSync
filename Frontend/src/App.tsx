@@ -7,6 +7,7 @@ import SignupPage from './components/SignupPage';
 import Dashboard from './components/Dashboard';
 import ResumeOptimizer from './components/ResumeOptimizer';
 import ResumePreview from './components/ResumePreview';
+import ProfilePage from './components/ProfilePage';
 
 // Protected Route component
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -49,6 +50,11 @@ function App() {
           <Route path="/resume/:id" element={
             <ProtectedRoute>
               <ResumePreview />
+            </ProtectedRoute>
+          } />
+          <Route path="/profile" element={
+            <ProtectedRoute>
+              <ProfilePage />
             </ProtectedRoute>
           } />
         </Routes>

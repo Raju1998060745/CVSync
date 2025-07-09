@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>{{ name }} – Resume</title>
+
+<!-- Optional Google font (falls back to system sans-serif if offline) -->
+<link href="https://fonts.googleapis.com/css2?family=Source+Sans+Pro:wght@400;600;700&display=swap" rel="stylesheet">
+
+<style>
+/* ---------- GLOBAL --------------- */
+:root {
+  --accent: #1b3aa4;                       /* tweak once for a new colour */
+  --font-body: "Source Sans Pro", Arial, sans-serif;
+}
+
+@page {                                     /* Wider printable area */
+  margin: 0.3in 0.3in 0.3in 0.3in;         /* top right bottom left */
+}
+
+body  {
+  font-family: var(--font-body);
+  font-size: 10.5pt;
+  line-height: 1.45;
+  color: #1a1a1a;
+}
+
+/* ---------- HEADER (centred) ------ */
+.header      { text-align: center; border-bottom: 3px solid var(--accent);
+               padding-bottom: 6px; margin-bottom: 18px; }
+.header h1   { font-size: 26pt; font-weight: 700; margin: 0; color: var(--accent); }
+
+.contact     { margin-top: 4px; font-size: 9.3pt; color: #444; }
+.contact span:not(:last-child)::after { content: " | "; }
+
+/* ---------- SECTION HEADINGS ------ */
+h2 {
+  font-size: 12pt; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .4px; margin: 22px 0 6px; color: var(--accent); position: relative;
+}
+h2::after { content: ""; position: absolute; bottom: -3px; left: 0;
+            width: 70px; height: 2px; background: var(--accent); }
+
+/* ---------- SUB-HEADINGS ---------- */
+h3         { font-size: 11pt; font-weight: 600; margin: 14px 0 2px; }
+.subhead   { font-style: italic; font-size: 9pt; color: #555; margin-bottom: 4px; }
+
+/* ---------- MAIN LIST STYLING ----- */
+ul         { margin: 2px 0 12px 14px; padding: 0; }   /* narrower indent */
+li         { margin-bottom: 3px; }
+
+/* ---------- SKILL “CHIPS” --------- */
+.taglist   { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 14px; }
+.tag       { font-size: 9pt; padding: 2px 8px; border: 1px solid var(--accent);
+             border-radius: 12px; color: var(--accent); white-space: nowrap; }
+
+/* Core Competencies as multi-column ATS-friendly list */
+.core-competencies-list {
+  column-count: 3;
+  column-gap: 32px;
+  margin: 4px 0 14px 0;
+  padding-left: 18px;
+  list-style: disc inside;
+}
+.core-competencies-list li {
+  font-size: 10pt;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  color: inherit;
+  background: none;
+  margin-bottom: 3px;
+  break-inside: avoid;
+}
+
+/* ---------- EDUCATION ------------- */
+.edu-title { font-weight: 600; }
+.edu-meta  { font-size: 9pt; color: #555; margin-bottom: 4px; }
+
+/* Reduce spacing between skill categories */
+.skills-section p { margin: 2px 0 2px 0; }
+</style>
+</head>
+
+<body>
+  <!-- ===== HEADER ===== -->
+  <header class="header">
+    <h1>{{ name }}</h1>
+    {% if contact %}
+      <p class="contact">
+        {% if contact.phone %}<span>{{ contact.phone }}</span>{% endif %}
+        {% if contact.email %}<span>{{ contact.email }}</span>{% endif %}
+        {% if contact.github %}<span>GitHub: {{ contact.github }}</span>{% endif %}
+      </p>
+    {% endif %}
+  </header>
+
+  <!-- ===== SUMMARY ===== -->
+  <h2>Summary</h2>
+  <p>{{ profile.summary }}</p>
+
+  <!-- ===== SKILLS ===== -->
+<h2>Skills</h2>
+<div class="skills-section">
+{% for category, items in profile.skills.items() %}
+  <p><strong>{{ category }}:</strong> {{ items | join(', ') }}</p>
+{% endfor %}
+</div>
+
+<!-- ===== CORE COMPETENCIES ===== -->
+<h2>Core Competencies</h2>
+<ul class="core-competencies-list">
+  {% for c in profile.core_competencies %}
+    <li>{{ c }}</li>
+  {% endfor %}
+</ul>
+
+
+  <!-- ===== EXPERIENCE ===== -->
+  <h2>Work Experience</h2>
+  {% for job in experience %}
+    <h3>{{ job.title }} — {{ job.company }}</h3>
+    <p class="subhead">{{ job.location }} | {{ job.start_date }} – {{ job.end_date or "Present" }}</p>
+    <ul>
+      {% for r in job.responsibilities %}
+        <li>{{ r }}</li>
+      {% endfor %}
+    </ul>
+  {% endfor %}
+
+  <!-- ===== PROJECTS ===== -->
+  {% if projects %}
+    <h2>Projects</h2>
+    {% for p in projects %}
+      <h3>{{ p.name }}</h3>
+      <p class="subhead">{{ p.date }} | {{ p.technologies }}</p>
+      <ul>
+        {% for d in p.description %}
+          <li>{{ d }}</li>
+        {% endfor %}
+      </ul>
+    {% endfor %}
+  {% endif %}
+
+  <!-- ===== EDUCATION (optional) ===== -->
+  {% if education %}
+    <h2>Education</h2>
+    {% for e in education %}
+      <p class="edu-title">{{ e.school }} — {{ e.degree }}</p>
+      <p class="edu-meta">{{ e.location }} | {{ e.graduation }}</p>
+      {% if e.details %}
+        <ul>
+          {% for note in e.details %}
+            <li>{{ note }}</li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+    {% endfor %}
+  {% endif %}
+</body>
+</html>

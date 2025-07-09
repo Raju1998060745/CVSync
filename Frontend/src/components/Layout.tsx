@@ -50,6 +50,17 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                   <FileText className="h-4 w-4" />
                   <span>Optimizer</span>
                 </Link>
+                <Link
+                  to="/profile"
+                  className={`flex items-center space-x-1 px-3 py-2 rounded-md text-sm font-medium transition-all duration-200 ${
+                    location.pathname === '/profile'
+                      ? 'bg-white/20 text-white'
+                      : 'text-white/80 hover:text-white hover:bg-white/10'
+                  }`}
+                >
+                  <User className="h-4 w-4" />
+                  <span>Profile</span>
+                </Link>
                 <button
                   onClick={handleLogout}
                   className="flex items-center space-x-1 px-3 py-2 rounded-md text-sm font-medium text-white/80 hover:text-white hover:bg-white/10 transition-all duration-200"

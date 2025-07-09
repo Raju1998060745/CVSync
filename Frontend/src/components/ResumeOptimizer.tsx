@@ -27,8 +27,21 @@ const ResumeOptimizer: React.FC = () => {
   const [state, setState] = useState<OptimizationState>({ step: 'input' });
   const [existingResumes, setExistingResumes] = useState<Resume[]>([]);
   const [showResumeDropdown, setShowResumeDropdown] = useState(false);
+  const [defaultResumes, setDefaultResumes] = useState<string[]>([]);
 
   useEffect(() => {
+    // Fetch default resumes from profile
+    const fetchDefaultResumes = async () => {
+      try {
+        const res = await fetch('http://localhost:8000/profile');
+        const data = await res.json();
+        setDefaultResumes(Array.isArray(data.resumes) ? data.resumes : []);
+      } catch (err) {
+        setDefaultResumes([]);
+      }
+    };
+    fetchDefaultResumes();
+
     const fetchResumes = async () => {
       try {
         const resumes = await api.getResumes();
@@ -114,6 +127,8 @@ const ResumeOptimizer: React.FC = () => {
       status: state.selectedResumeType!,
       atsscore: state.atsScore,
       optimizedscore: state.optimizedScore,
+      optimizedResume: state.optimizedResume,
+      generatedResume: state.generatedResume,
     };
     try {
       // Save the selected resume
@@ -252,21 +267,19 @@ const ResumeOptimizer: React.FC = () => {
 
                 {formData.useExistingResume ? (
                   <div className="space-y-4">
-                    <div className="relative">
+                    <div className="relative mb-4">
                       <button
                         type="button"
                         onClick={() => setShowResumeDropdown(!showResumeDropdown)}
                         className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white text-left focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 flex items-center justify-between"
                       >
                         <span>
-                          {formData.selectedResumeId 
+                          {formData.selectedResumeId
                             ? existingResumes.find(r => r.id === formData.selectedResumeId)?.role + ' - ' + existingResumes.find(r => r.id === formData.selectedResumeId)?.companyName
-                            : 'Select an existing resume'
-                          }
+                            : 'Select an existing resume'}
                         </span>
                         <ChevronDown className="h-5 w-5" />
                       </button>
-                      
                       {showResumeDropdown && (
                         <div className="absolute z-10 w-full mt-1 bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg shadow-lg max-h-60 overflow-y-auto">
                           {existingResumes.map((resume) => (
@@ -279,10 +292,24 @@ const ResumeOptimizer: React.FC = () => {
                               <div className="text-white/70 text-sm">{resume.companyName} • {new Date(resume.date).toLocaleDateString()}</div>
                             </button>
                           ))}
+                          {/* Default resumes from profile */}
+                          {defaultResumes.length > 0 && <div className="border-t border-white/20 my-2"></div>}
+                          {defaultResumes.map((resume, idx) => (
+                            <button
+                              key={`default-${idx}`}
+                              onClick={() => {
+                                setFormData({ ...formData, selectedResumeId: `default-${idx}`, currentResume: resume });
+                                setShowResumeDropdown(false);
+                              }}
+                              className="w-full px-4 py-3 text-left hover:bg-white/10 transition-colors border-b border-white/10 last:border-b-0"
+                            >
+                              <div className="text-white font-medium">Default Resume #{idx + 1}</div>
+                              <div className="text-white/70 text-xs">From Profile</div>
+                            </button>
+                          ))}
                         </div>
                       )}
                     </div>
-                    
                     {formData.selectedResumeId && (
                       <div className="bg-black/20 rounded-lg p-4 border border-white/10 max-h-60 overflow-y-auto">
                         <pre className="text-white/90 whitespace-pre-wrap text-sm leading-relaxed">
@@ -368,6 +395,7 @@ const ResumeOptimizer: React.FC = () => {
                         status: 'generated',
                         atsscore: state.atsScore,
                         optimizedscore: null,
+                        generatedResume: state.generatedResume,
                       };
                       try {
                         await api.saveSelectedResume(payload);

@@ -4,6 +4,110 @@ import { ArrowLeft, FileText, Building, Calendar, TrendingUp, Download, Share2, 
 import { api } from '../utils/api';
 import { Resume } from '../types/types';
 
+/* ─────────────────────────  StructuredResume  ───────────────────────── */
+function StructuredResume({ raw }: { raw: unknown }) {
+  const data = typeof raw === 'string' ? JSON.parse(raw) : raw;
+  if (!data) return <p>Resume content not available.</p>;
+
+  const { name, contact, profile, experience, projects } = data as any;
+
+  return (
+    <article className="prose max-w-none font-sans text-gray-900">
+      {/* HEADER */}
+      <header className="text-center border-b-4 border-blue-800 pb-3 mb-6">
+        <h1 className="text-3xl font-bold text-blue-800 m-0">{name}</h1>
+        {contact && (
+          <p className="text-xs text-gray-300">
+            {contact.phone}
+            {contact.email && <> | {contact.email}</>}
+            {contact.linkedin && (
+              <>
+                {' '}| LinkedIn:&nbsp;
+                <a
+                  href={`https://linkedin.com/in/${contact.linkedin}`}
+                  className="underline"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  {contact.linkedin}
+                </a>
+              </>
+            )}
+          </p>
+        )}
+      </header>
+
+      {/* SUMMARY */}
+      <section>
+        <h2 className="inline-block border-b-4  border-blue-800  pb-1 mb-4 text-blue-800 uppercase tracking-wide font-bold">Summary</h2>
+        <p>{profile.summary}</p>
+      </section>
+
+      {/* SKILLS */}
+      <section>
+        <h2 className="inline-block border-b-4  border-blue-800  pb-1 mb-4 text-blue-800 uppercase tracking-wide font-bold">Skills</h2>
+        {Object.entries(profile.skills).map(([cat, items]) => (
+          <p key={cat}>
+            <strong>{cat}:</strong> {(items as string[]).join(', ')}
+          </p>
+        ))}
+      </section>
+
+      {/* CORE COMPETENCIES */}
+      <section>
+        <h2 className="inline-block border-b-4  border-blue-800  pb-1 mb-4 text-blue-800 uppercase tracking-wide font-bold">Core Competencies</h2>
+        <ul className="list-disc ml-5">
+          {profile.core_competencies.map((c: string) => (
+            <li key={c}>{c}</li>
+          ))}
+        </ul>
+      </section>
+
+      {/* EXPERIENCE */}
+      <section>
+        <h2 className="inline-block border-b-4  border-blue-800  pb-1 mb-4 text-blue-800 uppercase tracking-wide font-bold">Work Experience</h2>
+        {experience.map((job: any) => (
+          <div key={`${job.company}-${job.title}`} className="mb-4">
+            <h3 className="font-semibold">
+              {job.title} — {job.company}
+            </h3>
+            <p className="italic text-xs text-gray-600">
+              {job.location} | {job.start_date} – {job.end_date || 'Present'}
+            </p>
+            <ul className="list-disc ml-5">
+              {job.responsibilities.map((r: string) => (
+                <li key={r}>{r}</li>
+              ))}
+            </ul>
+          </div>
+        ))}
+      </section>
+
+      {/* PROJECTS (optional) */}
+      {projects && projects.length > 0 && (
+        <section>
+          <h2 className="text-blue-800 uppercase tracking-wide font-bold">Projects</h2>
+          {projects.map((p: any) => (
+            <div key={p.name} className="mb-4">
+              <h3 className="font-semibold">{p.name}</h3>
+              <p className="italic text-xs text-gray-600">
+                {p.date} | {p.technologies}
+              </p>
+              <ul className="list-disc ml-5">
+                {p.description.map((d: string) => (
+                  <li key={d}>{d}</li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </section>
+      )}
+    </article>
+  );
+}
+/* ───────────────────── end StructuredResume ─────────────────────── */
+
+
 const ResumePreview: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -56,15 +160,29 @@ const ResumePreview: React.FC = () => {
   };
 
   const handleDownload = () => {
-    if (!resume) return;
-    
-    const element = document.createElement('a');
-    const file = new Blob([resume.content || ''], { type: 'text/plain' });
-    element.href = URL.createObjectURL(file);
-    element.download = `${resume.role}_${resume.companyName}_Resume.txt`;
-    document.body.appendChild(element);
-    element.click();
-    document.body.removeChild(element);
+    if (!id) return;
+    // Download PDF from backend
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+    const url = `${apiUrl}/pdf/${id}`;
+    fetch(url, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/pdf',
+      },
+    })
+      .then(response => {
+        if (!response.ok) throw new Error('Failed to download PDF');
+        return response.blob();
+      })
+      .then(blob => {
+        const link = document.createElement('a');
+        link.href = window.URL.createObjectURL(blob);
+        link.download = `${resume?.role || 'Resume'}_${resume?.companyName || ''}.pdf`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      })
+      .catch(() => alert('Failed to download PDF.'));
   };
 
   const handleShare = async () => {
@@ -244,10 +362,8 @@ const ResumePreview: React.FC = () => {
               <div className="p-8">
                 <div className="bg-white rounded-lg p-8 shadow-lg">
                   <div className="prose prose-gray max-w-none">
-                    <pre className="text-gray-800 whitespace-pre-wrap text-sm leading-relaxed font-sans">
-                      {resume.content || 'Resume content not available.'}
-                    </pre>
-                  </div>
+                    <StructuredResume raw={resume.content} />
+                </div>
                 </div>
               </div>
             </div>
