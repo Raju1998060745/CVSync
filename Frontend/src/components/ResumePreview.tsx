@@ -115,6 +115,11 @@ const ResumePreview: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
+  // Add state for profiles and selectedProfileId
+  const [profiles, setProfiles] = useState<any[]>([]);
+  const [selectedProfileId, setSelectedProfileId] = useState<number | null>(null);
+  const [selectedProfile, setSelectedProfile] = useState<any | null>(null);
+
   useEffect(() => {
     const fetchResume = async () => {
       if (!id) {
@@ -136,6 +141,36 @@ const ResumePreview: React.FC = () => {
 
     fetchResume();
   }, [id]);
+
+  // Fetch profiles and set default
+  useEffect(() => {
+    const fetchProfiles = async () => {
+      try {
+        const res = await fetch('http://localhost:8000/profiles');
+        const data = await res.json();
+        setProfiles(data);
+        if (data.length > 0 && selectedProfileId === null) setSelectedProfileId(data[0].id);
+      } catch (err) {
+        setProfiles([]);
+      }
+    };
+    fetchProfiles();
+  }, []);
+
+  // Fetch selected profile details
+  useEffect(() => {
+    if (!selectedProfileId) return;
+    const fetchProfile = async () => {
+      try {
+        const res = await fetch(`http://localhost:8000/profiles/${selectedProfileId}`);
+        const data = await res.json();
+        setSelectedProfile(data);
+      } catch (err) {
+        setSelectedProfile(null);
+      }
+    };
+    fetchProfile();
+  }, [selectedProfileId]);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -161,9 +196,8 @@ const ResumePreview: React.FC = () => {
 
   const handleDownload = () => {
     if (!id) return;
-    // Download PDF from backend
     const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-    const url = `${apiUrl}/pdf/${id}`;
+    const url = `${apiUrl}/pdf/${id}${selectedProfileId ? `?profile_id=${selectedProfileId}` : ''}`;
     fetch(url, {
       method: 'GET',
       headers: {
@@ -228,6 +262,13 @@ const ResumePreview: React.FC = () => {
         </div>
       </div>
     );
+  }
+
+  // Prepare resume data with selected profile's contact info
+  let resumeData = null;
+  if (resume) {
+    let contentObj = typeof resume.content === 'string' ? JSON.parse(resume.content) : resume.content;
+    resumeData = { ...contentObj, contact: selectedProfile };
   }
 
   return (
@@ -362,7 +403,7 @@ const ResumePreview: React.FC = () => {
               <div className="p-8">
                 <div className="bg-white rounded-lg p-8 shadow-lg">
                   <div className="prose prose-gray max-w-none">
-                    <StructuredResume raw={resume.content} />
+                    <StructuredResume raw={resumeData} />
                 </div>
                 </div>
               </div>

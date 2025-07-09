@@ -14,6 +14,15 @@ interface OptimizationState {
   selectedResumeType?: "optimized" | "generated";
 }
 
+interface UserProfile {
+  id: number;
+  name: string;
+  phone: string;
+  email: string;
+  github: string;
+  resumes: string[];
+}
+
 const ResumeOptimizer: React.FC = () => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
@@ -28,12 +37,28 @@ const ResumeOptimizer: React.FC = () => {
   const [existingResumes, setExistingResumes] = useState<Resume[]>([]);
   const [showResumeDropdown, setShowResumeDropdown] = useState(false);
   const [defaultResumes, setDefaultResumes] = useState<string[]>([]);
+  const [profiles, setProfiles] = useState<UserProfile[]>([]);
+  const [selectedProfileId, setSelectedProfileId] = useState<number | null>(null);
 
   useEffect(() => {
-    // Fetch default resumes from profile
-    const fetchDefaultResumes = async () => {
+    // Fetch all profiles
+    const fetchProfiles = async () => {
       try {
-        const res = await fetch('http://localhost:8000/profile');
+        const res = await fetch('http://localhost:8000/profiles');
+        const data = await res.json();
+        setProfiles(data);
+        if (data.length > 0 && selectedProfileId === null) setSelectedProfileId(data[0].id);
+      } catch (err) {
+        setProfiles([]);
+      }
+    };
+    fetchProfiles();
+
+    // Fetch default resumes from selected profile
+    const fetchDefaultResumes = async () => {
+      if (!selectedProfileId) return;
+      try {
+        const res = await fetch(`http://localhost:8000/profiles/${selectedProfileId}`);
         const data = await res.json();
         setDefaultResumes(Array.isArray(data.resumes) ? data.resumes : []);
       } catch (err) {
@@ -51,16 +76,17 @@ const ResumeOptimizer: React.FC = () => {
       }
     };
     fetchResumes();
-  }, []);
+  }, [selectedProfileId]);
 
   const handleGenerate = async () => {
     setState({ step: 'generating' });
-    // Only send the required fields to the API
+    // Send profile_id to the API
     const payload = {
       job_description: formData.jobDescription,
       current_resume: formData.currentResume,
       companyName: formData.companyName,
-      role: formData.roleName
+      role: formData.roleName,
+      profile_id: selectedProfileId
     };
     try {
       const response = await api.generateResume(payload);
@@ -77,13 +103,11 @@ const ResumeOptimizer: React.FC = () => {
 
   const handleCheckATS = async () => {
     setState({ ...state, step: 'scoring' });
-
     const payload = {
-
       job_description: formData.jobDescription,
       resume: existingResumes.find(r => r.id === formData.selectedResumeId)?.content || formData.currentResume,
+      profile_id: selectedProfileId
     };
-    
     try {
       const response = await api.checkATSScore(payload);
       setState({
@@ -98,12 +122,11 @@ const ResumeOptimizer: React.FC = () => {
 
   const handleOptimize = async () => {
     setState({ ...state, step: 'optimizing' });
-
     const payload = {
       job_description: formData.jobDescription,
       resume: existingResumes.find(r => r.id === formData.selectedResumeId)?.content || formData.currentResume,
+      profile_id: selectedProfileId
     };
-
     try {
       const response = await api.optimizeResume(payload);
       setState({
@@ -129,6 +152,7 @@ const ResumeOptimizer: React.FC = () => {
       optimizedscore: state.optimizedScore,
       optimizedResume: state.optimizedResume,
       generatedResume: state.generatedResume,
+      profile_id: selectedProfileId
     };
     try {
       // Save the selected resume
@@ -328,6 +352,20 @@ const ResumeOptimizer: React.FC = () => {
                   />
                 )}
               </div>
+            </div>
+
+            {/* Profile Selection */}
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-white/90 mb-2">Select Profile</label>
+              <select
+                value={selectedProfileId ?? ''}
+                onChange={e => setSelectedProfileId(Number(e.target.value))}
+                className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+              >
+                {profiles.map(profile => (
+                  <option key={profile.id} value={profile.id}>{profile.name}</option>
+                ))}
+              </select>
             </div>
 
             <div className="mt-8 flex justify-center">

@@ -80,6 +80,7 @@ class ResumeRequest(BaseModel):
     current_resume: str
     companyName: str
     role: str
+    profile_id: int | None = None
 
 class EvaluateRequest(BaseModel):
     job_description: str
@@ -99,6 +100,7 @@ class SaveSelectedResumeRequest(BaseModel):
 
 
 class UserProfile(BaseModel):
+    id: int | None = None
     name: str
     phone: str
     email: str
@@ -211,11 +213,11 @@ def generate_resume(data: ResumeRequest):
     conn = sqlite3.connect("results.db")
     c = conn.cursor()
     c.execute(
-        "CREATE TABLE IF NOT EXISTS results (id INTEGER PRIMARY KEY AUTOINCREMENT,company TEXT,date TEXT,role TEXT,status INTEGER,atsScore INTEGER,content TEXT )"
+        "CREATE TABLE IF NOT EXISTS results (id INTEGER PRIMARY KEY AUTOINCREMENT,company TEXT,date TEXT,role TEXT,status INTEGER,atsScore INTEGER,content TEXT, profile_id INTEGER)"
     )
     c.execute(
-        "INSERT INTO results (date, company, role, content, status, atsScore) VALUES (?, ?, ?, ?, ?, ?)",
-        (datetime.now().isoformat(), data.companyName, data.role, output, 1, 95)
+        "INSERT INTO results (date, company, role, content, status, atsScore, profile_id) VALUES (?, ?, ?, ?, ?, ?, ?)",
+        (datetime.now().isoformat(), data.companyName, data.role, output, 1, 95, data.profile_id)
     )
     conn.commit()
     conn.close()
@@ -332,6 +334,8 @@ Professional Summary (3-4 lines)
         thinking_config=types.ThinkingConfig(
             thinking_budget=-1,
         ),
+        response_schema = Resume.model_json_schema(),
+        response_mime_type = "application/json",
     )
 
     result = ""
@@ -458,10 +462,10 @@ def save_selected_resume(data: SaveSelectedResumeRequest):
 
 @app.get("/resume/{resume_id}")
 def get_resume_by_id(resume_id: str):
-    res=int(resume_id)
+    res = int(resume_id)
     conn = sqlite3.connect("results.db")
     c = conn.cursor()
-    c.execute("SELECT id, company, date, role, status, atsScore, content FROM results WHERE id = ?", (res,))
+    c.execute("SELECT id, company, date, role, status, atsScore, content, profile_id FROM results WHERE id = ?", (res,))
     row = c.fetchone()
     conn.close()
     if row:
@@ -472,26 +476,32 @@ def get_resume_by_id(resume_id: str):
             "role": row[3],
             "status": "generated" if row[4] == 0 else "optimized",
             "atsScore": row[5],
-            "content": row[6]
+            "content": row[6],
+            "profile_id": row[7]
         }
     else:
         return {"error": "Resume not found"}
 
 @app.get("/pdf/{resume_id}")
-def generate_pdf_api(resume_id: str):
+def generate_pdf_api(resume_id: str, request: Request):
+    # profile_id = request.query_params.get("profile_id")  # No longer needed
     res = int(resume_id)
     conn = sqlite3.connect("results.db")
     c = conn.cursor()
-    c.execute("SELECT content FROM results WHERE id = ?", (res,))
+    c.execute("SELECT content, profile_id FROM results WHERE id = ?", (res,))
     row = c.fetchone()
     if not row:
         conn.close()
         return JSONResponse(content={"error": "Resume not found"}, status_code=404)
-    content = row[0]
-    # Fetch user profile info
-    c.execute("SELECT name, phone, email, github FROM user_profile WHERE id = 1")
+    content, stored_profile_id = row
+
+    # Always use stored_profile_id, default to 1 if missing
+    profile_id = int(stored_profile_id) if stored_profile_id else 1
+
+    c.execute("SELECT name, phone, email, github FROM user_profile WHERE id = ?", (profile_id,))
     profile_row = c.fetchone()
     conn.close()
+
     extra = {}
     if profile_row:
         extra = {
@@ -502,23 +512,24 @@ def generate_pdf_api(resume_id: str):
                 "github": profile_row[3] or ""
             }
         }
-    # Merge extra info into resume content
+
     try:
         resume_data = json.loads(content)
     except Exception:
         resume_data = {}
+
     resume_data.update(extra)
     pdf_path = f"resume_{resume_id}.pdf"
     generate_pdf_from_content(resume_data, pdf_path)
     return FileResponse(pdf_path, media_type="application/pdf", filename=pdf_path)
 
-@app.get("/profile")
-def get_profile():
+@app.get("/profiles")
+def list_profiles():
     conn = sqlite3.connect("results.db")
     c = conn.cursor()
     c.execute("""
         CREATE TABLE IF NOT EXISTS user_profile (
-            id INTEGER PRIMARY KEY,
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT,
             phone TEXT,
             email TEXT,
@@ -526,26 +537,80 @@ def get_profile():
             resumes TEXT
         )
     """)
-    c.execute("SELECT name, phone, email, github, resumes FROM user_profile WHERE id = 1")
+    c.execute("SELECT id, name, phone, email, github, resumes FROM user_profile")
+    rows = c.fetchall()
+    conn.close()
+    return [
+        {
+            "id": row[0],
+            "name": row[1],
+            "phone": row[2],
+            "email": row[3],
+            "github": row[4],
+            "resumes": json.loads(row[5]) if row[5] else []
+        }
+        for row in rows
+    ]
+
+@app.post("/profiles")
+def create_profile(profile: UserProfile):
+    conn = sqlite3.connect("results.db")
+    c = conn.cursor()
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS user_profile (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT,
+            phone TEXT,
+            email TEXT,
+            github TEXT,
+            resumes TEXT
+        )
+    """)
+    c.execute("INSERT INTO user_profile (name, phone, email, github, resumes) VALUES (?, ?, ?, ?, ?)",
+              (profile.name, profile.phone, profile.email, profile.github, json.dumps(profile.resumes)))
+    conn.commit()
+    new_id = c.lastrowid
+    conn.close()
+    return {"id": new_id, "message": "Profile created"}
+
+@app.put("/profiles/{profile_id}")
+def update_profile(profile_id: int, profile: UserProfile):
+    conn = sqlite3.connect("results.db")
+    c = conn.cursor()
+    c.execute("UPDATE user_profile SET name=?, phone=?, email=?, github=?, resumes=? WHERE id=?",
+              (profile.name, profile.phone, profile.email, profile.github, json.dumps(profile.resumes), profile_id))
+    conn.commit()
+    conn.close()
+    return {"message": "Profile updated"}
+
+@app.delete("/profiles/{profile_id}")
+def delete_profile(profile_id: int):
+    conn = sqlite3.connect("results.db")
+    c = conn.cursor()
+    c.execute("DELETE FROM user_profile WHERE id=?", (profile_id,))
+    conn.commit()
+    conn.close()
+    return {"message": "Profile deleted"}
+
+@app.get("/profiles/{profile_id}")
+def get_profile(profile_id: int):
+    conn = sqlite3.connect("results.db")
+    c = conn.cursor()
+    c.execute("SELECT id, name, phone, email, github, resumes FROM user_profile WHERE id=?", (profile_id,))
     row = c.fetchone()
     conn.close()
     if row:
         return {
-            "name": row[0],
-            "phone": row[1],
-            "email": row[2],
-            "github": row[3],
-            "resumes": json.loads(row[4]) if row[4] else []
+            "id": row[0],
+            "name": row[1],
+            "phone": row[2],
+            "email": row[3],
+            "github": row[4],
+            "resumes": json.loads(row[5]) if row[5] else []
         }
     else:
-        return {
-            "name": "",
-            "phone": "",
-            "email": "",
-            "github": "",
-            "resumes": []
-        }
-
+        return {"error": "Profile not found"}
+        
 @app.post("/profile")
 def save_profile(profile: UserProfile):
     conn = sqlite3.connect("results.db")
