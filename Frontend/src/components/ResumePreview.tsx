@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { ArrowLeft, FileText, Building, Calendar, TrendingUp, Download, Share2, Edit } from 'lucide-react';
 import { api } from '../utils/api';
 import { Resume } from '../types/types';
+import { useRequireAuth } from '../utils/auth';
 
 /* ─────────────────────────  StructuredResume  ───────────────────────── */
 function StructuredResume({ raw }: { raw: unknown }) {
@@ -109,6 +110,7 @@ function StructuredResume({ raw }: { raw: unknown }) {
 
 
 const ResumePreview: React.FC = () => {
+  useRequireAuth();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [resume, setResume] = useState<Resume | null>(null);

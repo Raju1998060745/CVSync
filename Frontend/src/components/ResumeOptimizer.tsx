@@ -3,6 +3,7 @@ import { FileText, Building, User, Briefcase, Zap, TrendingUp, CheckCircle, Plus
 import { api } from '../utils/api';
 import { Resume } from '../types/types';
 import { useNavigate } from 'react-router-dom';
+import { useRequireAuth } from '../utils/auth';
 
 interface OptimizationState {
   step: 'input' | 'generating' | 'preview' | 'scoring' | 'optimizing' | 'final';
@@ -24,6 +25,7 @@ interface UserProfile {
 }
 
 const ResumeOptimizer: React.FC = () => {
+  useRequireAuth();
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
     companyName: '',
