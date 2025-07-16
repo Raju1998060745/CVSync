@@ -107,6 +107,67 @@ class UserProfile(BaseModel):
     github: str
     resumes: list[str]
 
+class SignupRequest(BaseModel):
+    email: str
+    password: str
+    name: str
+
+class LoginRequest(BaseModel):
+    email: str
+    password: str
+
+@app.post("/signup")
+def signup(data: SignupRequest):
+    conn = sqlite3.connect("results.db")
+    c = conn.cursor()
+    try:
+        c.execute("INSERT INTO users (email, password, name) VALUES (?, ?, ?)",
+                  (data.email, data.password, data.name))
+        conn.commit()
+        user_id = c.lastrowid
+    except sqlite3.IntegrityError:
+        return JSONResponse(content={"error": "Email already exists"}, status_code=400)
+    finally:
+        conn.close()
+    return {
+        "user": {"id": user_id, "email": data.email, "name": data.name},
+        "token": "fake-jwt-token"
+    }
+
+@app.post("/login")
+def login(data: LoginRequest):
+    conn = sqlite3.connect("results.db")
+    c = conn.cursor()
+    c.execute("SELECT id, name FROM users WHERE email = ? AND password = ?",
+              (data.email, data.password))
+    row = c.fetchone()
+    conn.close()
+
+    if not row:
+        return JSONResponse(content={"error": "Invalid credentials"}, status_code=401)
+
+    return {
+        "user": {"id": row[0], "email": data.email, "name": row[1]},
+        "token": "fake-jwt-token"
+    }
+
+
+@app.on_event("startup")
+def create_user_table():
+    conn = sqlite3.connect("results.db")
+    c = conn.cursor()
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            email TEXT UNIQUE NOT NULL,
+            password TEXT NOT NULL,
+            name TEXT
+        )
+    """)
+    conn.commit()
+    conn.close()
+
+
 
 @traceable(run_type="llm", name="generate_resume")
 def generate(job_description, current_resume):

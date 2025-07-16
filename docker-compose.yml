@@ -9,7 +9,7 @@ services:
     volumes:
       - ./.env:/app/.env:ro
       # Uncomment the next line to persist the results database
-      # - ./results.db:/app/results.db
+      - ./results.db:/app/results.db
   frontend:
     build:
       context: ./Frontend

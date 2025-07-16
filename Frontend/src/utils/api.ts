@@ -1,22 +1,36 @@
 // Mock API functions - replace with actual API calls
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 export const api = {
+  // 🔐 LOGIN
   login: async (email: string, password: string) => {
-    // Mock login
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        resolve({ user: { id: '1', email, name: 'John Doe' }, token: 'mock-token' });
-      }, 1000);
+    const response = await fetch(`${API_URL}/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
     });
+
+    if (!response.ok) {
+      const err = await response.json();
+      throw new Error(err?.error || 'Invalid credentials');
+    }
+
+    return await response.json(); // { user, token }
   },
 
+  // 📝 SIGNUP
   signup: async (email: string, password: string, name: string) => {
-    // Mock signup
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        resolve({ user: { id: '1', email, name }, token: 'mock-token' });
-      }, 1000);
+    const response = await fetch(`${API_URL}/signup`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password, name }),
     });
+
+    if (!response.ok) {
+      const err = await response.json();
+      throw new Error(err?.error || 'Signup failed');
+    }
+
+    return await response.json(); // { user, token }
   },
 
   getResumes: async () => {
