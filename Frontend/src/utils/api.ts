@@ -1,4 +1,5 @@
 // Mock API functions - replace with actual API calls
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 export const api = {
   login: async (email: string, password: string) => {
     // Mock login
@@ -20,7 +21,7 @@ export const api = {
 
   getResumes: async () => {
     // Fetch resumes from backend API
-    const response = await fetch('http://localhost:8000/results');
+    const response = await fetch(`${API_URL}/results`);
     if (!response.ok) {
       throw new Error('Failed to fetch resumes');
     }
@@ -30,7 +31,7 @@ export const api = {
 
   getResumeById: async (id: string) => {
     // Fetch resume by ID from backend API
-    const response = await fetch(`http://localhost:8000/resume/${id}`);
+    const response = await fetch(`${API_URL}/resume/${id}`);
     if (!response.ok) {
       throw new Error('Failed to fetch resume by ID');
     }
@@ -43,7 +44,7 @@ export const api = {
 
   generateResume: async (data: any) => {
     // Call backend API to generate resume
-    const response = await fetch('http://localhost:8000/generate_resume', {
+    const response = await fetch(`${API_URL}/generate_resume`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
@@ -57,7 +58,7 @@ export const api = {
 
   checkATSScore: async (data: any) => {
     // Call backend API to evaluate ATS score
-    const response = await fetch('http://localhost:8000/evaluate_ats', {
+    const response = await fetch(`${API_URL}/evaluate_ats`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
@@ -71,7 +72,7 @@ export const api = {
 
   optimizeResume: async (data: any) => {
     // Call backend API to optimize resume
-    const response = await fetch('http://localhost:8000/optimize_resume', {
+    const response = await fetch(`${API_URL}/optimize_resume`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
@@ -89,7 +90,7 @@ export const api = {
 
   saveSelectedResume: async (data : any) => {
     // Call backend API to save selected resume status
-    const response = await fetch('http://localhost:8000/saveselectedresume', {
+    const response = await fetch(`${API_URL}/saveselectedresume`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
