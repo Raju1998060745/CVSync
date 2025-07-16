@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { User, Phone, Mail, Github, FileText, Plus, X, Save, Loader } from 'lucide-react';
+import { useRequireAuth } from '../utils/auth';
 
 interface UserProfile {
   id?: number;
@@ -12,6 +13,7 @@ interface UserProfile {
 const emptyProfile = { name: '', phone: '', email: '', github: '', resumes: [''] };
 
 const ProfilePage: React.FC = () => {
+  useRequireAuth();
   const [profiles, setProfiles] = useState<UserProfile[]>([]);
   const [activeProfileId, setActiveProfileId] = useState<number | null>(null);
   const [editingProfile, setEditingProfile] = useState<UserProfile | null>(null);
