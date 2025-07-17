@@ -3,6 +3,7 @@ import { FileText, Building, User, Briefcase, Zap, TrendingUp, CheckCircle, Plus
 import { api } from '../utils/api';
 import { Resume } from '../types/types';
 import { useNavigate } from 'react-router-dom';
+import { useRequireAuth } from '../utils/auth';
 
 interface OptimizationState {
   step: 'input' | 'generating' | 'preview' | 'scoring' | 'optimizing' | 'final';
@@ -24,6 +25,7 @@ interface UserProfile {
 }
 
 const ResumeOptimizer: React.FC = () => {
+  useRequireAuth(); // Ensure user is authenticated
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
     companyName: '',
@@ -44,7 +46,12 @@ const ResumeOptimizer: React.FC = () => {
     // Fetch all profiles
     const fetchProfiles = async () => {
       try {
-        const res = await fetch('http://localhost:8000/profiles');
+        const token = localStorage.getItem('token');
+const res = await fetch('http://localhost:8000/profiles', {
+  headers: {
+    'Authorization': `Bearer ${token}`,
+  },
+});
         const data = await res.json();
         setProfiles(data);
         if (data.length > 0 && selectedProfileId === null) setSelectedProfileId(data[0].id);
@@ -58,7 +65,12 @@ const ResumeOptimizer: React.FC = () => {
     const fetchDefaultResumes = async () => {
       if (!selectedProfileId) return;
       try {
-        const res = await fetch(`http://localhost:8000/profiles/${selectedProfileId}`);
+        const token = localStorage.getItem('token');
+        const res = await fetch(`http://localhost:8000/profiles/${selectedProfileId}`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        });
         const data = await res.json();
         setDefaultResumes(Array.isArray(data.resumes) ? data.resumes : []);
       } catch (err) {

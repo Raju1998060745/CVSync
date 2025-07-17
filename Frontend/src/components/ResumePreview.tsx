@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { ArrowLeft, FileText, Building, Calendar, TrendingUp, Download, Share2, Edit } from 'lucide-react';
 import { api } from '../utils/api';
 import { Resume } from '../types/types';
+import { useRequireAuth } from '../utils/auth';
 
 /* ─────────────────────────  StructuredResume  ───────────────────────── */
 function StructuredResume({ raw }: { raw: unknown }) {
@@ -109,6 +110,7 @@ function StructuredResume({ raw }: { raw: unknown }) {
 
 
 const ResumePreview: React.FC = () => {
+  useRequireAuth(); // Ensure user is authenticated
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [resume, setResume] = useState<Resume | null>(null);
@@ -146,7 +148,12 @@ const ResumePreview: React.FC = () => {
   useEffect(() => {
     const fetchProfiles = async () => {
       try {
-        const res = await fetch('http://localhost:8000/profiles');
+        const token = localStorage.getItem('token');
+        const res = await fetch('http://localhost:8000/profiles', {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        });
         const data = await res.json();
         setProfiles(data);
         if (data.length > 0 && selectedProfileId === null) setSelectedProfileId(data[0].id);
@@ -162,7 +169,12 @@ const ResumePreview: React.FC = () => {
     if (!selectedProfileId) return;
     const fetchProfile = async () => {
       try {
-        const res = await fetch(`http://localhost:8000/profiles/${selectedProfileId}`);
+        const token = localStorage.getItem('token');
+        const res = await fetch(`http://localhost:8000/profiles/${selectedProfileId}`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        });
         const data = await res.json();
         setSelectedProfile(data);
       } catch (err) {
@@ -197,10 +209,12 @@ const ResumePreview: React.FC = () => {
   const handleDownload = () => {
     if (!id) return;
     const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+    const token = localStorage.getItem('token');
     const url = `${apiUrl}/pdf/${id}${selectedProfileId ? `?profile_id=${selectedProfileId}` : ''}`;
     fetch(url, {
       method: 'GET',
       headers: {
+        'Authorization': `Bearer ${token}`,
         'Accept': 'application/pdf',
       },
     })

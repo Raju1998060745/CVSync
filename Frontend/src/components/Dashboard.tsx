@@ -3,8 +3,10 @@ import { Link } from 'react-router-dom';
 import { FileText, Plus, Calendar, Building, TrendingUp, Star, Eye } from 'lucide-react';
 import { api } from '../utils/api';
 import { Resume } from '../types/types';
+import { useRequireAuth } from '../utils/auth';
 
 const Dashboard: React.FC = () => {
+  useRequireAuth(); // Ensure user is authenticated
   const [resumes, setResumes] = useState<Resume[]>([]);
   const [loading, setLoading] = useState(true);
 

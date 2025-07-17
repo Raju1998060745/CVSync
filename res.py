@@ -2,8 +2,9 @@ from google import genai
 from google.genai import types
 import base64
 import sqlite3
-from datetime import datetime
-from fastapi import FastAPI, Request
+from datetime import datetime, timedelta
+from fastapi import FastAPI, Request, Depends, HTTPException, status
+import os
 from pydantic import BaseModel
 from fastapi.responses import JSONResponse, FileResponse
 import uvicorn
@@ -12,6 +13,8 @@ from fastapi.middleware.cors import CORSMiddleware
 import re
 from typing import List, Optional, Dict
 import json
+from jose import JWTError, jwt
+from passlib.context import CryptContext
 
 from dotenv import load_dotenv
 from pdf_utils import generate_pdf_from_content
@@ -116,39 +119,92 @@ class LoginRequest(BaseModel):
     email: str
     password: str
 
+SECRET_KEY = os.getenv("FASTAPI_SECRET", "change-me")
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24
+
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+
+def create_access_token(data: dict, expires_delta: int = ACCESS_TOKEN_EXPIRE_MINUTES) -> str:
+    to_encode = data.copy()
+    expire = datetime.utcnow() + timedelta(minutes=expires_delta)
+    to_encode.update({"exp": expire})
+    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    return pwd_context.verify(plain_password, hashed_password)
+
+
+def get_password_hash(password: str) -> str:
+    return pwd_context.hash(password)
+
+
+def get_current_user(request: Request):
+    auth = request.headers.get("Authorization")
+    if not auth or not auth.startswith("Bearer "):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
+                            detail="Missing authentication")
+    token = auth.split(" ", 1)[1]
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        user_id = payload.get("sub")
+    except JWTError:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
+                            detail="Invalid token")
+    if user_id is None:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
+                            detail="Invalid token")
+    conn = sqlite3.connect("results.db")
+    c = conn.cursor()
+    c.execute("SELECT id, email, name FROM users WHERE id = ?", (user_id,))
+    row = c.fetchone()
+    conn.close()
+    if not row:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
+                            detail="User not found")
+    return {"id": row[0], "email": row[1], "name": row[2]}
+
 @app.post("/signup")
 def signup(data: SignupRequest):
     conn = sqlite3.connect("results.db")
     c = conn.cursor()
     try:
-        c.execute("INSERT INTO users (email, password, name) VALUES (?, ?, ?)",
-                  (data.email, data.password, data.name))
+        hashed = get_password_hash(data.password)
+        c.execute(
+            "INSERT INTO users (email, password, name) VALUES (?, ?, ?)",
+            (data.email, hashed, data.name),
+        )
         conn.commit()
+        
         user_id = c.lastrowid
     except sqlite3.IntegrityError:
         return JSONResponse(content={"error": "Email already exists"}, status_code=400)
     finally:
         conn.close()
+        token = create_access_token({"sub": str(user_id)})
+
     return {
         "user": {"id": user_id, "email": data.email, "name": data.name},
-        "token": "fake-jwt-token"
+        "token": token,
     }
 
 @app.post("/login")
 def login(data: LoginRequest):
     conn = sqlite3.connect("results.db")
     c = conn.cursor()
-    c.execute("SELECT id, name FROM users WHERE email = ? AND password = ?",
-              (data.email, data.password))
+    c.execute("SELECT id, password, name FROM users WHERE email = ?", (data.email,))
     row = c.fetchone()
     conn.close()
 
-    if not row:
+    if not row or not verify_password(data.password, row[1]):
         return JSONResponse(content={"error": "Invalid credentials"}, status_code=401)
+    token = create_access_token({"sub": str(row[0])})
 
     return {
-        "user": {"id": row[0], "email": data.email, "name": row[1]},
-        "token": "fake-jwt-token"
+        "user": {"id": row[0], "email": data.email, "name": row[2]},
+        "token": token,
     }
 
 
@@ -268,27 +324,35 @@ Professional Summary (3-4 lines)
     return result
 
 @app.post("/generate_resume")
-def generate_resume(data: ResumeRequest):
+def generate_resume(data: ResumeRequest, user_id: int = Depends(get_current_user)):
+    user_id = user_id["id"]
     output = generate(data.job_description, data.current_resume)
     # Store the result in a SQLite database
     conn = sqlite3.connect("results.db")
     c = conn.cursor()
     c.execute(
-        "CREATE TABLE IF NOT EXISTS results (id INTEGER PRIMARY KEY AUTOINCREMENT,company TEXT,date TEXT,role TEXT,status INTEGER,atsScore INTEGER,content TEXT, profile_id INTEGER)"
+        "CREATE TABLE IF NOT EXISTS results (id INTEGER PRIMARY KEY AUTOINCREMENT,company TEXT,date TEXT,role TEXT,status INTEGER,atsScore INTEGER,content TEXT, profile_id INTEGER, user_id INTEGER)"
     )
     c.execute(
-        "INSERT INTO results (date, company, role, content, status, atsScore, profile_id) VALUES (?, ?, ?, ?, ?, ?, ?)",
-        (datetime.now().isoformat(), data.companyName, data.role, output, 1, 95, data.profile_id)
+        "INSERT INTO results (date, company, role, content, status, atsScore, profile_id, user_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        (datetime.now().isoformat(), data.companyName, data.role, output, 1, 95, data.profile_id, user_id)
     )
     conn.commit()
     conn.close()
     return JSONResponse(content={"result": output, "id": c.lastrowid})
 
 @app.get("/results")
-def get_all_results():
+def get_all_results(user_id: int = Depends(get_current_user)):
+    user_id=user_id["id"]
     conn = sqlite3.connect("results.db")
     c = conn.cursor()
-    c.execute("SELECT id, company, date, role, status, atsScore, content FROM results ORDER BY id DESC")
+    c.execute(
+        "CREATE TABLE IF NOT EXISTS results (id INTEGER PRIMARY KEY AUTOINCREMENT,company TEXT,date TEXT,role TEXT,status INTEGER,atsScore INTEGER,content TEXT, profile_id INTEGER, user_id INTEGER)"
+    )
+    c.execute(
+        "SELECT id, company, date, role, status, atsScore, content FROM results WHERE user_id = ? ORDER BY id DESC",
+        (user_id,),
+    )
     rows = c.fetchall()
     conn.close()
     results = []
@@ -522,11 +586,18 @@ def save_selected_resume(data: SaveSelectedResumeRequest):
     return {"message": "Status, score, and content updated successfully", "id": data.id, "status": data.status, "score": score, "content": content}
 
 @app.get("/resume/{resume_id}")
-def get_resume_by_id(resume_id: str):
+def get_resume_by_id(resume_id: str, user_id: int = Depends(get_current_user)):
+    user_id = user_id["id"]
     res = int(resume_id)
     conn = sqlite3.connect("results.db")
     c = conn.cursor()
-    c.execute("SELECT id, company, date, role, status, atsScore, content, profile_id FROM results WHERE id = ?", (res,))
+    c.execute(
+        "CREATE TABLE IF NOT EXISTS results (id INTEGER PRIMARY KEY AUTOINCREMENT,company TEXT,date TEXT,role TEXT,status INTEGER,atsScore INTEGER,content TEXT, profile_id INTEGER, user_id INTEGER)"
+    )
+    c.execute(
+        "SELECT id, company, date, role, status, atsScore, content, profile_id FROM results WHERE id = ? AND user_id = ?",
+        (res, user_id),
+    )
     row = c.fetchone()
     conn.close()
     if row:
@@ -544,12 +615,16 @@ def get_resume_by_id(resume_id: str):
         return {"error": "Resume not found"}
 
 @app.get("/pdf/{resume_id}")
-def generate_pdf_api(resume_id: str, request: Request):
+def generate_pdf_api(resume_id: str, request: Request, user_id: int = Depends(get_current_user)):
+    user_id = user_id["id"]
     # profile_id = request.query_params.get("profile_id")  # No longer needed
     res = int(resume_id)
     conn = sqlite3.connect("results.db")
     c = conn.cursor()
-    c.execute("SELECT content, profile_id FROM results WHERE id = ?", (res,))
+    c.execute(
+        "CREATE TABLE IF NOT EXISTS results (id INTEGER PRIMARY KEY AUTOINCREMENT,company TEXT,date TEXT,role TEXT,status INTEGER,atsScore INTEGER,content TEXT, profile_id INTEGER, user_id INTEGER)"
+    )
+    c.execute("SELECT content, profile_id FROM results WHERE id = ? AND user_id = ?", (res, user_id))
     row = c.fetchone()
     if not row:
         conn.close()
@@ -585,7 +660,8 @@ def generate_pdf_api(resume_id: str, request: Request):
     return FileResponse(pdf_path, media_type="application/pdf", filename=pdf_path)
 
 @app.get("/profiles")
-def list_profiles():
+def list_profiles(user_id: int = Depends(get_current_user)):
+    user_id = user_id["id"]
     conn = sqlite3.connect("results.db")
     c = conn.cursor()
     c.execute("""
@@ -595,10 +671,14 @@ def list_profiles():
             phone TEXT,
             email TEXT,
             github TEXT,
-            resumes TEXT
+            resumes TEXT,
+            user_id INTEGER
         )
     """)
-    c.execute("SELECT id, name, phone, email, github, resumes FROM user_profile")
+    c.execute(
+        "SELECT id, name, phone, email, github, resumes FROM user_profile WHERE user_id = ?",
+        (user_id,),
+    )
     rows = c.fetchall()
     conn.close()
     return [
@@ -614,7 +694,8 @@ def list_profiles():
     ]
 
 @app.post("/profiles")
-def create_profile(profile: UserProfile):
+def create_profile(profile: UserProfile, user_id: int = Depends(get_current_user)):
+    user_id = user_id["id"]
     conn = sqlite3.connect("results.db")
     c = conn.cursor()
     c.execute("""
@@ -624,40 +705,43 @@ def create_profile(profile: UserProfile):
             phone TEXT,
             email TEXT,
             github TEXT,
-            resumes TEXT
+            resumes TEXT,
+            user_id INTEGER
         )
     """)
-    c.execute("INSERT INTO user_profile (name, phone, email, github, resumes) VALUES (?, ?, ?, ?, ?)",
-              (profile.name, profile.phone, profile.email, profile.github, json.dumps(profile.resumes)))
+    c.execute("INSERT INTO user_profile (name, phone, email, github, resumes, user_id) VALUES (?, ?, ?, ?, ?, ?)",
+              (profile.name, profile.phone, profile.email, profile.github, json.dumps(profile.resumes), user_id))
     conn.commit()
     new_id = c.lastrowid
     conn.close()
     return {"id": new_id, "message": "Profile created"}
 
 @app.put("/profiles/{profile_id}")
-def update_profile(profile_id: int, profile: UserProfile):
+def update_profile(profile_id: int, profile: UserProfile, user_id: int = Depends(get_current_user)):
+    user_id = user_id["id"]
     conn = sqlite3.connect("results.db")
     c = conn.cursor()
-    c.execute("UPDATE user_profile SET name=?, phone=?, email=?, github=?, resumes=? WHERE id=?",
-              (profile.name, profile.phone, profile.email, profile.github, json.dumps(profile.resumes), profile_id))
+    c.execute("UPDATE user_profile SET name=?, phone=?, email=?, github=?, resumes=? WHERE id=? AND user_id=?",
+              (profile.name, profile.phone, profile.email, profile.github, json.dumps(profile.resumes), profile_id, user_id))
     conn.commit()
     conn.close()
     return {"message": "Profile updated"}
 
 @app.delete("/profiles/{profile_id}")
-def delete_profile(profile_id: int):
+def delete_profile(profile_id: int, user_id: int = Depends(get_current_user)):
+    user_id = user_id["id"]
     conn = sqlite3.connect("results.db")
     c = conn.cursor()
-    c.execute("DELETE FROM user_profile WHERE id=?", (profile_id,))
-    conn.commit()
+    c.execute("DELETE FROM user_profile WHERE id=? AND user_id=?", (profile_id, user_id))
     conn.close()
     return {"message": "Profile deleted"}
 
 @app.get("/profiles/{profile_id}")
-def get_profile(profile_id: int):
+def get_profile(profile_id: int, user_id: int = Depends(get_current_user)):
+    user_id = user_id["id"]
     conn = sqlite3.connect("results.db")
     c = conn.cursor()
-    c.execute("SELECT id, name, phone, email, github, resumes FROM user_profile WHERE id=?", (profile_id,))
+    c.execute("SELECT id, name, phone, email, github, resumes FROM user_profile WHERE id=? AND user_id=?", (profile_id, user_id))
     row = c.fetchone()
     conn.close()
     if row:
@@ -673,7 +757,8 @@ def get_profile(profile_id: int):
         return {"error": "Profile not found"}
         
 @app.post("/profile")
-def save_profile(profile: UserProfile):
+def save_profile(profile: UserProfile, user_id: int = Depends(get_current_user)):
+    user_id = user_id["id"]
     conn = sqlite3.connect("results.db")
     c = conn.cursor()
     c.execute("""
@@ -683,17 +768,18 @@ def save_profile(profile: UserProfile):
             phone TEXT,
             email TEXT,
             github TEXT,
-            resumes TEXT
+            resumes TEXT,
+            user_id INTEGER
         )
     """)
-    c.execute("SELECT id FROM user_profile WHERE id = 1")
+    c.execute("SELECT id FROM user_profile WHERE id = 1 AND user_id = ?", (user_id,))
     exists = c.fetchone()
     if exists:
-        c.execute("UPDATE user_profile SET name=?, phone=?, email=?, github=?, resumes=? WHERE id=1",
-                  (profile.name, profile.phone, profile.email, profile.github, json.dumps(profile.resumes)))
+         c.execute("UPDATE user_profile SET name=?, phone=?, email=?, github=?, resumes=? WHERE id=1 AND user_id=?",
+                  (profile.name, profile.phone, profile.email, profile.github, json.dumps(profile.resumes), user_id))
     else:
-        c.execute("INSERT INTO user_profile (id, name, phone, email, github, resumes) VALUES (1,?,?,?,?,?)",
-                  (profile.name, profile.phone, profile.email, profile.github, json.dumps(profile.resumes)))
+        c.execute("INSERT INTO user_profile (id, name, phone, email, github, resumes, user_id) VALUES (1,?,?,?,?,?,?)",
+                  (profile.name, profile.phone, profile.email, profile.github, json.dumps(profile.resumes), user_id))
     conn.commit()
     conn.close()
     return {"message": "Profile saved"}
