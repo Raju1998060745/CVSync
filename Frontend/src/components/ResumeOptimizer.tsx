@@ -33,7 +33,9 @@ const ResumeOptimizer: React.FC = () => {
     jobDescription: '',
     currentResume: '',
     useExistingResume: false,
-    selectedResumeId: ''
+    selectedResumeId: '',
+    betaMode: false,
+    linkedinUrl: ''
   });
   const [state, setState] = useState<OptimizationState>({ step: 'input' });
   const [existingResumes, setExistingResumes] = useState<Resume[]>([]);

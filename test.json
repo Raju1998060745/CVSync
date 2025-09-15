@@ -1,0 +1,28 @@
+{
+ "contact":{
+  "name": "John Doe",
+  "email": "pusapati.raju@hotmail.com",
+  "phone": "571-318-1082",
+  "github":"https://github.com/Raju1998060745"},
+  "education": [
+    {
+      "degree": "Bachelor of Technology in Computer Science and Engineering",
+      "institution": "GITAM University, Kakinada",
+      "year": 2020,
+      "details": [
+        "Relevant coursework: Data Structures, Algorithms, Database Management Systems",
+      ]
+    },
+    {
+      "degree": "Master of Science in Computer Science",
+      "institution": "George Mason University",
+      "year": 2022,
+      "details": [
+        "Relevant coursework: Machine Learning, Cloud Computing, Data Mining",
+    
+      ]
+    }
+  ]
+
+  
+}

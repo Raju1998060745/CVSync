@@ -206,32 +206,34 @@ const ResumePreview: React.FC = () => {
     return 'bg-red-500/20 border-red-500/30';
   };
 
-  const handleDownload = () => {
-    if (!id) return;
-    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-    const token = localStorage.getItem('token');
-    const url = `${apiUrl}/pdf/${id}${selectedProfileId ? `?profile_id=${selectedProfileId}` : ''}`;
-    fetch(url, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Accept': 'application/pdf',
-      },
+  const handleDownload = (format: 'pdf' | 'docx') => {
+  if (!id) return;
+  const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+  const token = localStorage.getItem('token');
+  const url = `${apiUrl}/${format}/${id}${selectedProfileId ? `?profile_id=${selectedProfileId}` : ''}`;
+
+  fetch(url, {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Accept': format === 'pdf' ? 'application/pdf' : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    },
+  })
+    .then(response => {
+      if (!response.ok) throw new Error(`Failed to download ${format.toUpperCase()}`);
+      return response.blob();
     })
-      .then(response => {
-        if (!response.ok) throw new Error('Failed to download PDF');
-        return response.blob();
-      })
-      .then(blob => {
-        const link = document.createElement('a');
-        link.href = window.URL.createObjectURL(blob);
-        link.download = `${resume?.role || 'Resume'}_${resume?.companyName || ''}.pdf`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-      })
-      .catch(() => alert('Failed to download PDF.'));
-  };
+    .then(blob => {
+      const link = document.createElement('a');
+      link.href = window.URL.createObjectURL(blob);
+      link.download = `${resume?.role || 'Resume'}_${resume?.companyName || ''}.${format}`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    })
+    .catch(() => alert(`Failed to download ${format.toUpperCase()}.`));
+};
+
 
   const handleShare = async () => {
     if (navigator.share && resume) {
@@ -329,13 +331,29 @@ const ResumePreview: React.FC = () => {
                 <Share2 className="h-4 w-4" />
                 <span>Share</span>
               </button>
-              <button
-                onClick={handleDownload}
-                className="bg-white/10 backdrop-blur-sm text-white px-4 py-2 rounded-lg font-medium hover:bg-white/20 transition-all duration-200 flex items-center space-x-2 border border-white/20"
-              >
-                <Download className="h-4 w-4" />
-                <span>Download</span>
-              </button>
+              <div className="relative group">
+  <button
+    className="bg-white/10 backdrop-blur-sm text-white px-4 py-2 rounded-lg font-medium hover:bg-white/20 transition-all duration-200 flex items-center space-x-2 border border-white/20"
+  >
+    <Download className="h-4 w-4" />
+    <span>Download</span>
+  </button>
+  <div className="absolute right-0 mt-1 hidden group-hover:block z-10 bg-white text-sm rounded-lg shadow-lg">
+    <button
+      onClick={() => handleDownload('pdf')}
+      className="block w-full text-left px-4 py-2 hover:bg-gray-100 text-black"
+    >
+      PDF
+    </button>
+    <button
+      onClick={() => handleDownload('docx')}
+      className="block w-full text-left px-4 py-2 hover:bg-gray-100 text-black"
+    >
+      DOCX
+    </button>
+  </div>
+</div>
+
               <Link
                 to="/optimizer"
                 className="bg-gradient-to-r from-blue-600 to-cyan-600 text-white px-4 py-2 rounded-lg font-medium hover:from-blue-700 hover:to-cyan-700 transition-all duration-300 transform hover:scale-105 flex items-center space-x-2"

@@ -1,0 +1,99 @@
+{
+  "name": "Raju Pusapati",
+  "profile": {
+    "summary": "Highly accomplished Software Engineer with 2+ years of hands-on experience in designing, developing, and deploying scalable technology solutions across on-prem and cloud-native AWS environments. Proven expertise in architecting robust backend microservices, optimizing large datasets, and ensuring system reliability within distributed environments. Adept at leveraging Python and SQL for complex software development, passionate about continuous learning, and committed to building highly efficient and failure-tolerant systems for regulated industries.",
+    "skills": {
+      "Programming Languages": [
+        "Python",
+        "SQL",
+        "Shell Scripting"
+      ],
+      "Cloud Platforms": [
+        "Amazon Web Services (AWS)",
+        "AWS S3",
+        "AWS EC2",
+        "AWS EKS"
+      ],
+      "Databases": [
+        "PostgreSQL",
+        "Vector Databases"
+      ],
+      "Containerization & Orchestration": [
+        "Docker",
+        "Kubernetes"
+      ],
+      "Architecture & Design": [
+        "Microservices Architecture",
+        "Service-Oriented Architecture",
+        "Distributed Systems Design"
+      ],
+      "DevOps & CI/CD": [
+        "CI/CD",
+        "Automated Testing",
+        "Git"
+      ],
+      "Data Management": [
+        "Data Processing Pipelines",
+        "Data Modeling",
+        "Data Analysis",
+        "Data Warehousing"
+      ]
+    },
+    "core_competencies": [
+      "Scalable Software Development",
+      "Cloud-Native Architecture (AWS)",
+      "Distributed Computing",
+      "Relational and NoSQL Databases",
+      "API Development and Integration",
+      "CI/CD Implementation",
+      "System Reliability Engineering",
+      "Code Review",
+      "Cross-functional Collaboration",
+      "Data Structures and Algorithms",
+      "Regulated Industry Compliance"
+    ]
+  },
+  "experience": [
+    {
+      "company": "VR IT resources – Gainwell Technologies",
+      "title": "AI Engineer",
+      "location": "Las Vegas",
+      "start_date": "Feb 2023",
+      "end_date": "Present",
+      "summary": null,
+      "responsibilities": [
+        "Designed and productionized scalable AI-powered systems for medical claims validation, boosting processing efficiency by 30%.",
+        "Engineered intelligent agentic workflows to reduce manual review turnaround time by 25% through optimized automation.",
+        "Architected robust, end-to-end data processing pipelines, managing over 1TB monthly data while cutting latency by 20%.",
+        "Developed resilient Python-based backend microservices, supporting 10,000+ daily medical claims validations with a 15% error reduction.",
+        "Engineered and integrated advanced vector databases to optimize complex query retrieval by 35% within distributed AI workflows.",
+        "Leveraged Natural Language Processing (NLP) and Large Language Models to achieve 90% anomaly detection accuracy in unstructured data.",
+        "Implemented robust CI/CD pipelines, accelerating feature delivery for critical applications by 40% and enhancing system reliability.",
+        "Provided architectural guidance for integrating complex solutions into distributed environments, supporting 2x anticipated user growth.",
+        "Maintained 99.9% uptime for critical medical claims processing systems, demonstrating strong support for the full software development lifecycle.",
+        "Collaborated cross-functionally with product and data science teams to optimize system architecture for scalable deployments."
+      ]
+    },
+    {
+      "company": "Tata Consultancy Services(TCS) - British Telecom(BT)",
+      "title": "Software Engineer",
+      "location": "India",
+      "start_date": "May 2019",
+      "end_date": "Dec 2021",
+      "summary": null,
+      "responsibilities": [
+        "Spearheaded design and development of critical backend enterprise systems, enhancing data processing efficiency by 25%.",
+        "Architected and maintained a robust PostgreSQL-backed data warehousing solution, optimizing complex data retrieval performance by 30%.",
+        "Developed and deployed scalable, cloud-native applications on Amazon Web Services (AWS) using S3, EC2, and EKS.",
+        "Implemented Python-based automation tools for real-time monitoring and support, decreasing system downtime by 20% to enhance reliability.",
+        "Optimized complex SQL queries for large datasets, driving a 40% improvement in data analysis and reporting generation speeds.",
+        "Championed Continuous Integration and Deployment (CI/CD) practices, accelerating feature release cycles by 30% for new functionalities.",
+        "Contributed to the design and implementation of scalable service-oriented architectures, ensuring seamless integration for 500+ concurrent users.",
+        "Collaborated with cross-functional teams to ensure enterprise solutions met rigorous industry standards, achieving 100% compliance in security audits.",
+        "Developed responsive web interfaces and comprehensive reporting solutions, reducing manual data compilation time by 20%.",
+        "Contributed to continuous process improvements for issue management, reducing average issue resolution time by 25% for critical systems."
+      ]
+    }
+  ],
+  "projects": []
+}

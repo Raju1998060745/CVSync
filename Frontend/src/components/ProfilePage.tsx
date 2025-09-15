@@ -159,7 +159,7 @@ const ProfilePage: React.FC = () => {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:8000/profile/${id}`, {
+      const response = await fetch(`http://localhost:8000/profiles/${id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,

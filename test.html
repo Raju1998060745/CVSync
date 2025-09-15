@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Raju Pusapati – Resume</title>
+
+  <!-- Font (falls back to system sans-serif if offline) -->
+  <link href="https://fonts.googleapis.com/css2?family=Source+Sans+Pro:wght@400;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    /* ---------- GLOBAL --------------- */
+    :root{
+      --accent:#1b3aa4;             /* tweak once for a new colour theme */
+      --font-body:"Source Sans Pro",Arial,sans-serif;
+    }
+    @page{ margin:.4in .6in .4in .6in; }          /* print margins */
+
+    body{
+      font-family:var(--font-body);
+      font-size:0.9rem;
+      line-height:1.4;
+      color:#222;
+    }
+    h1,h2,h3{ margin:0 0 .2em 0; color:var(--accent);}
+    h1{ font-size:1.6rem; }
+    h2{ font-size:1.1rem; border-bottom:2px solid var(--accent); padding-bottom:2px; margin-top:1.1rem;}
+    h3{ font-size:0.95rem; font-weight:600; }
+
+    /* layout helpers */
+    .section{ margin-bottom:.8rem;}
+    .two-col{ display:flex; justify-content:space-between; flex-wrap:wrap;}
+    .two-col > div{ width:48%; }
+    ul{ margin:.25rem 0 .25rem 1rem; padding:0;}
+    li{ margin-bottom:.2rem;}
+    .tagline{ font-size:.95rem; font-weight:600; margin:0 0 .6rem 0;}
+    .contact{ font-size:0.8rem; color:#444; }
+    .contact a{ color:inherit; text-decoration:none; }
+    .skill-grid{ display:flex; flex-wrap:wrap; gap:.4rem .8rem;}
+    .skill-grid span{ background:#eef2ff; border:1px solid #c7d2fe; padding:2px 6px; border-radius:4px; font-size:0.8rem;}
+    /* subtle rule */
+    .rule{ height:1px; background:#ddd; margin:1rem 0;}
+
+  </style>
+</head>
+<body>
+
+  <!-- ================= HEADER ================= -->
+  <header>
+    <h1>Raju Satyanarayana Pusapati</h1>
+    <p class="contact">
+      Las Vegas, NV  · 
+      <a href="tel:+17025550123">+1-702-555-0123</a>  · 
+      <a href="mailto:raju@email.com">raju@email.com</a>  · 
+      <a href="https://linkedin.com/in/raju-pusapati">linkedin.com/in/raju-pusapati</a>  · 
+      <a href="https://github.com/raju1998">github.com/raju1998</a>
+    </p>
+    <!-- Personal Brand Statement -->
+    <p class="tagline">
+      Distributed-systems engineer who turns complex medical data into real-time insights.
+      Four years delivering AI platforms that cut processing time 25-40 % and scale to 10 k+ daily transactions.
+    </p>
+  </header>
+
+  <!-- ================= CAREER IMPACT HIGHLIGHTS ================= -->
+  <section class="section">
+    <h2>Career Impact Highlights</h2>
+    <ul>
+      <li>Architected AI-powered anomaly-detection pipeline that boosted medical-claims throughput <strong>30 %</strong> and lowered manual review by <strong>25 %</strong>.</li>
+      <li>Introduced containerized CI/CD on AWS EKS, enabling <strong>40 %</strong> faster feature releases and zero-downtime deploys.</li>
+      <li>Reduced cloud spend <strong>15 %</strong> via capacity-based autoscaling and spot-instance adoption.</li>
+      <li>Led cross-functional task-force migrating legacy ETL to Kafka + PostgreSQL, cutting batch latency from 24 h to <5 m.</li>
+    </ul>
+  </section>
+
+  <!-- ================= SKILLS ================= -->
+  <section class="section">
+    <h2>Technical Arsenal & Tools in Production</h2>
+    <div class="skill-grid">
+      <span>Python (6 yr)</span><span>Java (3 yr)</span><span>LangChain / LangGraph</span><span>Vector DB (Pinecone, Faiss)</span>
+      <span>AWS (EKS, S3, Lambda)</span><span>PostgreSQL</span><span>Kafka</span><span>Docker & K8s</span>
+      <span>CI/CD (GitHub Actions)</span><span>Tableau</span><span>Power BI</span><span>Terraform</span>
+    </div>
+  </section>
+
+  <!-- ================= EXPERIENCE ================= -->
+  <section class="section">
+    <h2>Engineering Leadership Experience</h2>
+
+    <h3>Gainwell Technologies · AI Engineer</h3>
+    <p class="contact">Mar 2023 – Present, Las Vegas NV</p>
+    <ul>
+      <li>Designed agentic RAG workflow using LangGraph + Pinecone retrieving 20 k medical codes in &lt;300 ms.</li>
+      <li>Built real-time claims-anomaly dashboard (Tableau) consumed by 30+ auditors, shortening investigation cycles 2×.</li>
+      <li>Why it matters: Prevented an estimated <strong>$1.2 M</strong> in overpayments in FY 2024.</li>
+    </ul>
+
+    <h3>Tata Consultancy Services (TCS) · Software Engineer</h3>
+    <p class="contact">Jun 2019 – Feb 2023, Hyderabad IN</p>
+    <ul>
+      <li>Automated network-trace analysis for British Telecom with Python orchestration; SLA compliance improved from 82 % → 97 %.</li>
+      <li>Refactored persistence layer (Spring, Hibernate) eliminating 90 % of DB deadlocks and accelerating writes by 3×.</li>
+    </ul>
+  </section>
+
+  <!-- ================= PROJECTS ================= -->
+  <section class="section">
+    <h2>Innovation Showcases</h2>
+    <div class="two-col">
+      <div>
+        <h3>AI-Powered Document Chatbot</h3>
+        <ul>
+          <li>Context-aware Q&A over 10 k-page claim PDFs using dual-vector RAG, boosting reviewer productivity 35 %.</li>
+        </ul>
+      </div>
+      <div>
+        <h3>SchedulAI · Google ADK Agents</h3>
+        <ul>
+          <li>Multi-agent orchestration that proposes calendar slots & resolves conflicts via Vertex AI; PoC demo hit 93 % accuracy.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= CONTINUOUS LEARNING ================= -->
+  <section class="section">
+    <h2>Continuous Learning & Thought Leadership</h2>
+    <ul>
+      <li>AWS Certified Solutions Architect – Associate, 2025</li>
+      <li>Speaker, “Scaling Vector Databases,” PyData Las Vegas 2024</li>
+      <li>Contributor, LangChain OSS (20+ merged PRs in 2024-25)</li>
+    </ul>
+  </section>
+
+  <!-- ================= EDUCATION ================= -->
+  <section class="section">
+    <h2>Academic Foundation & Research</h2>
+    <p><strong>M.S. Computer Science</strong>, George Mason University, Fairfax VA — 2025<br>
+       Capstone: “Real-time RAG Optimization on Streaming Data” (Grade A)</p>
+    <p><strong>B.Tech. Electronics & Communication</strong>, JNTU, Hyderabad — 2019</p>
+  </section>
+
+</body>
+</html>

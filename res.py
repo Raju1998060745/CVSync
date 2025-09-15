@@ -229,7 +229,7 @@ def create_user_table():
 def generate(job_description, current_resume):
     client = genai.Client(
         vertexai=True,
-        project="schedulai-457519",
+        project="cvsync-466917",
         location="global",
     )
 
@@ -374,7 +374,7 @@ def rewrite_resume(job_desc: str,
                    feedback: str | None = None) -> str:
     client = genai.Client(
         vertexai=True,
-        project="schedulai-457519",
+        project="cvsync-466917",
         location="global",
     )
     """Return an updated résumé (Work Experience + Skills) aligned to JD.
@@ -477,7 +477,7 @@ Professional Summary (3-4 lines)
 def evaluate_resume(job_desc: str, resume: str) -> tuple[int, str]:
     client = genai.Client(
         vertexai=True,
-        project="schedulai-457519",
+        project="cvsync-466917",
         location="global",
     )
     """Return (ATS score, explanation)."""
@@ -648,13 +648,32 @@ def generate_pdf_api(resume_id: str, request: Request, user_id: int = Depends(ge
                 "github": profile_row[3] or ""
             }
         }
-
+    
     try:
         resume_data = json.loads(content)
     except Exception:
         resume_data = {}
 
     resume_data.update(extra)
+    resume_data["education"] = [
+    {
+        "degree": "Master of Science in Computer Science",
+        "institution": "George Mason University",
+        "location": "Fairfax, Virginia",
+        "details": [
+            "Relevant coursework: Machine Learning, Cloud Computing, Component-Based Software Engineering, Software Architecture"
+        ]
+    },
+    {
+        "degree": "Bachelor of Technology in Computer Science and Engineering",
+        "institution": "GITAM University",
+        "location": "Visakhapatnam, India",
+        "details": [
+            "Relevant coursework: Data Structures, Algorithms, Database Management Systems"
+        ]
+    },\
+    
+    ]
     pdf_path = f"resume_{resume_id}.pdf"
     generate_pdf_from_content(resume_data, pdf_path)
     return FileResponse(pdf_path, media_type="application/pdf", filename=pdf_path)
@@ -733,7 +752,11 @@ def delete_profile(profile_id: int, user_id: int = Depends(get_current_user)):
     conn = sqlite3.connect("results.db")
     c = conn.cursor()
     c.execute("DELETE FROM user_profile WHERE id=? AND user_id=?", (profile_id, user_id))
+    deleted = c.rowcount  
+    conn.commit()
     conn.close()
+    if deleted == 0:
+        return {"message": "No profile found or unauthorized"}
     return {"message": "Profile deleted"}
 
 @app.get("/profiles/{profile_id}")

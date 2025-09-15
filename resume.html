@@ -24,6 +24,23 @@ body  {
   line-height: 1.45;
   color: #1a1a1a;
 }
+/* Only applied when printing */
+@media print {
+  /* Never split a job entry across pages */
+  .job-entry {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  /* Force the 2nd job (and any that follow it) onto a new page */
+  .job-entry:nth-of-type(2) {
+    /* legacy */
+    page-break-before: always;
+    /* modern */
+    break-before: page;  /* forces page break before this element */ 
+  }
+}
+
 
 /* ---------- HEADER (centred) ------ */
 .header      { text-align: center; border-bottom: 3px solid var(--accent);
@@ -118,7 +135,8 @@ li         { margin-bottom: 3px; }
 
   <!-- ===== EXPERIENCE ===== -->
   <h2>Work Experience</h2>
-  {% for job in experience %}
+{% for job in experience %}
+  <div class="job-entry">
     <h3>{{ job.title }} — {{ job.company }}</h3>
     <p class="subhead">{{ job.location }} | {{ job.start_date }} – {{ job.end_date or "Present" }}</p>
     <ul>
@@ -126,7 +144,13 @@ li         { margin-bottom: 3px; }
         <li>{{ r }}</li>
       {% endfor %}
     </ul>
-  {% endfor %}
+  </div>
+
+  {# Insert a page break after the first job to force second job onto the next page #}
+  {% if loop.index == 1 %}
+    <div class="page-break"></div>
+  {% endif %}
+{% endfor %}
 
   <!-- ===== PROJECTS ===== -->
   {% if projects %}
@@ -143,11 +167,10 @@ li         { margin-bottom: 3px; }
   {% endif %}
 
   <!-- ===== EDUCATION (optional) ===== -->
-  {% if education %}
     <h2>Education</h2>
     {% for e in education %}
-      <p class="edu-title">{{ e.school }} — {{ e.degree }}</p>
-      <p class="edu-meta">{{ e.location }} | {{ e.graduation }}</p>
+      <p class="edu-title">{{ e.institution }} — {{ e.degree }}</p>
+      <p class="edu-meta">{{ e.location }}</p>
       {% if e.details %}
         <ul>
           {% for note in e.details %}
@@ -156,6 +179,6 @@ li         { margin-bottom: 3px; }
         </ul>
       {% endif %}
     {% endfor %}
-  {% endif %}
+
 </body>
 </html>
